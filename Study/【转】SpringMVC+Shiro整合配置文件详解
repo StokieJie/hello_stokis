@@ -1,0 +1,526 @@
+1、web.xml文件的配置
+
+所有javaweb项目第一步要做的就是对web.xml文件进行配置。
+
+
+<?xml version="1.0" encoding="UTF-8"?>  
+<web-app version="2.5"  
+    xmlns="http://java.sun.com/xml/ns/javaee"  
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee  
+    http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">  
+    <!-- Web容器加载顺序ServletContext--context-param--listener--filter--servlet -->  
+  
+    <!-- 指定Spring的配置文件 -->  
+    <!-- 否则Spring会默认从WEB-INF下寻找配置文件,contextConfigLocation属性是Spring内部固定的 -->
+    <context-param>  
+        <param-name>contextConfigLocation</param-name>  
+        <param-value>classpath*:/spring-context*.xml</param-value>  
+    </context-param>  
+  
+    <!-- 防止发生java.beans.Introspector内存泄露,应将它配置在ContextLoaderListener的前面 -->
+    <listener>  
+        <listener-class>org.springframework.web.util.IntrospectorCleanupListener</listener-class>  
+    </listener>  
+      
+    <!-- 实例化Spring容器 -->  
+    <!-- 应用启动时,该监听器被执行,它会读取Spring相关配置文件,其默认会到WEB-INF中查找applicationContext.xml -->  
+    <listener>  
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>  
+    </listener>  
+  
+    <!-- 解决乱码问题 -->  
+    <!-- forceEncoding默认为false,此时效果可大致理解为request.setCharacterEncoding("UTF-8") -->  
+    <!-- forceEncoding=true后,可大致理解为request.setCharacterEncoding("UTF-8")和response.setCharacterEncoding("UTF-8") -->  
+    <filter>  
+        <filter-name>SpringEncodingFilter</filter-name>  
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>  
+        <init-param>  
+            <param-name>encoding</param-name>  
+            <param-value>UTF-8</param-value>  
+        </init-param>  
+        <init-param>  
+            <param-name>forceEncoding</param-name>  
+            <param-value>true</param-value>  
+        </init-param>  
+    </filter>  
+    <filter-mapping>  
+        <filter-name>SpringEncodingFilter</filter-name>  
+        <url-pattern>/*</url-pattern>  
+    </filter-mapping>  
+      
+    <!-- 配置Shiro过滤器,先让Shiro过滤系统接收到的请求 -->  
+    <!-- 这里filter-name必须对应applicationContext.xml中定义的<bean id="shiroFilter"/> -->  
+    <!-- 使用[/*]匹配所有请求,保证所有的可控请求都经过Shiro的过滤 -->  
+    <!-- 通常会将此filter-mapping放置到最前面(即其他filter-mapping前面),以保证它是过滤器链中第一个起作用的 -->  
+    <filter>  
+        <filter-name>shiroFilter</filter-name>  
+        <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>  
+        <init-param>  
+            <!-- 该值缺省为false,表示生命周期由SpringApplicationContext管理,设置为true则表示由ServletContainer管理 -->  
+            <param-name>targetFilterLifecycle</param-name>  
+            <param-value>true</param-value>  
+        </init-param>  
+    </filter>  
+    <filter-mapping>  
+        <filter-name>shiroFilter</filter-name>  
+        <url-pattern>/*</url-pattern>  
+    </filter-mapping>  
+  
+    <!-- SpringMVC核心分发器 -->  
+    <servlet>  
+        <servlet-name>SpringMVC</servlet-name>  
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>  
+        <init-param>  
+            <param-name>contextConfigLocation</param-name>  
+            <param-value>classpath*:/spring-mvc*.xml</param-value>  
+        </init-param>  
+    </servlet>  
+    <servlet-mapping>  
+        <servlet-name>SpringMVC</servlet-name>  
+        <url-pattern>/</url-pattern>  
+    </servlet-mapping>  
+  
+    <!-- Session超时30分钟(零或负数表示会话永不超时)-->  
+    <!--   
+    <session-config>  
+        <session-timeout>30</session-timeout>  
+    </session-config>  
+     -->  
+  
+    <!-- 默认欢迎页 -->
+    <!-- Servlet2.5中可直接在此处执行Servlet应用,如<welcome-file>servlet/InitSystemParamServlet</welcome-file> -->  
+    <!-- 这里使用了SpringMVC提供的<mvc:view-controller>标签,实现了首页隐藏的目的,详见applicationContext.xml -->  
+    <!--   
+    <welcome-file-list>  
+        <welcome-file>login.jsp</welcome-file>  
+    </welcome-file-list>  
+     -->  
+      
+    <error-page>  
+        <error-code>405</error-code>  
+        <location>/WEB-INF/405.html</location>  
+    </error-page>  
+    <error-page>  
+        <error-code>404</error-code>  
+        <location>/WEB-INF/404.jsp</location>  
+    </error-page>  
+    <error-page>  
+        <error-code>500</error-code>  
+        <location>/WEB-INF/500.jsp</location>  
+    </error-page>  
+    <error-page>  
+        <exception-type>java.lang.Throwable</exception-type>  
+        <location>/WEB-INF/500.jsp</location>  
+    </error-page>  
+</web-app>
+
+2、spring-mvc.xml文件的配置
+
+这个文件主要是对springmvc的相关配置。
+
+
+<?xml version="1.0" encoding="UTF-8"?>  
+<beans xmlns="http://www.springframework.org/schema/beans"  
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+    xmlns:mvc="http://www.springframework.org/schema/mvc"  
+    xmlns:context="http://www.springframework.org/schema/context"  
+    xsi:schemaLocation="http://www.springframework.org/schema/beans  
+                        http://www.springframework.org/schema/beans/spring-beans-3.2.xsd  
+                        http://www.springframework.org/schema/mvc  
+                        http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd  
+                        http://www.springframework.org/schema/context  
+                        http://www.springframework.org/schema/context/spring-context-3.2.xsd">  
+    <!-- 它背后注册了很多用于解析注解的处理器,其中就包括<context:annotation-config/>配置的注解所使用的处理器 -->  
+    <!-- 所以配置了<context:component-scan base-package="">之后,便无需再配置<context:annotation-config> -->  
+    <context:component-scan base-package="com.papio"/>  
+      
+    <!-- 启用SpringMVC的注解功能,它会自动注册HandlerMapping、HandlerAdapter、ExceptionResolver的相关实例 -->  
+    <mvc:annotation-driven/>  
+  
+    <!-- 配置SpringMVC的视图解析器 -->  
+    <!-- 其viewClass属性的默认值就是org.springframework.web.servlet.view.JstlView -->  
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">  
+        <property name="prefix" value="/"/>  
+        <property name="suffix" value=".jsp"/>  
+    </bean>  
+  
+    <!-- 默认访问跳转到登录页面(即定义无需Controller的url<->view直接映射) -->  
+    <mvc:view-controller path="/" view-name="forward:/login.jsp"/>  
+  
+    <!-- 由于web.xml中设置是：由SpringMVC拦截所有请求,于是在读取静态资源文件的时候就会受到影响(说白了就是读不到) -->  
+    <!-- 经过下面的配置，该标签的作用就是：所有页面中引用"/js/**"的资源，都会从"/resources/js/"里面进行查找 -->  
+    <!-- 我们可以访问http://IP:8080/xxx/js/my.css和http://IP:8080/xxx/resources/js/my.css对比出来 -->  
+    <mvc:resources mapping="/js/**" location="/resources/js/"/>  
+    <mvc:resources mapping="/css/**" location="/resources/css/"/>  
+    <mvc:resources mapping="/WEB-INF/**" location="/WEB-INF/"/>  
+  
+    <!-- SpringMVC在超出上传文件限制时，会抛出org.springframework.web.multipart.MaxUploadSizeExceededException -->  
+    <!-- 该异常是SpringMVC在检查上传的文件信息时抛出来的，而且此时还没有进入到Controller方法中 -->  
+    <bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">  
+        <property name="exceptionMappings">  
+            <props>  
+                <!-- 遇到MaxUploadSizeExceededException异常时，自动跳转到/WEB-INF/error_fileupload.jsp页面 -->  
+                <prop key="org.springframework.web.multipart.MaxUploadSizeExceededException">WEB-INF/error_fileupload</prop>  
+                <!-- 处理其它异常(包括Controller抛出的) -->  
+                <prop key="java.lang.Throwable">WEB-INF/500</prop>  
+            </props>  
+        </property>  
+    </bean>  
+</beans>
+
+3、spring-context-shiro.xml文件配置
+
+这个文件是对shiro权限框架的配置。
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context" xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/context  http://www.springframework.org/schema/context/spring-context-4.0.xsd"
+	default-lazy-init="true">
+    <!-- 继承自AuthorizingRealm的自定义Realm,即指定Shiro验证用户登录的类为自定义的ShiroDbRealm.java -->  
+    <bean id="myRealm" class="com.papio.realm.MyRealm"/>  
+  
+    <!-- 定义缓存管理器 --> 
+   <bean id="cacheManager" class="org.apache.shiro.cache.MemoryConstrainedCacheManager" /> 
+
+   <bean id="sessionManager" class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">
+       <!-- session的失效时长，单位毫秒 -->
+     <property name="globalSessionTimeout" value="600000"/>
+      <!-- 删除失效的session -->
+     <property name="deleteInvalidSessions" value="true"/>
+   </bean>
+
+    <!-- Shiro默认会使用Servlet容器的Session,可通过sessionMode属性来指定使用Shiro原生Session -->  
+    <!-- 即<property name="sessionMode" value="native"/>,详细说明见官方文档 -->  
+    <!-- 这里主要是设置自定义的单Realm应用,若有多个Realm,可使用'realms'属性代替 -->  
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">  
+        <property name="realm" ref="myRealm"/>
+        <!-- 使用配置的缓存管理器 --> 
+     <property name="cacheManager" ref="cacheManager"></property> 
+     <!-- 会话管理 -->
+     <property name="sessionManager" ref="sessionManager" />
+  </bean>  
+  
+    <!-- Shiro主过滤器本身功能十分强大,其强大之处就在于它支持任何基于URL路径表达式的、自定义的过滤器的执行 -->  
+    <!-- Web应用中,Shiro可控制的Web请求必须经过Shiro主过滤器的拦截,Shiro对基于Spring的Web应用提供了完美的支持 -->  
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">  
+        <!-- Shiro的核心安全接口,这个属性是必须的 -->  
+        <property name="securityManager" ref="securityManager"/>  
+        <!-- 要求登录时的链接(可根据项目的URL进行替换),非必须的属性,默认会自动寻找Web工程根目录下的"/login.jsp"页面 -->  
+        <property name="loginUrl" value="/"/>  
+        <!-- 登录成功后要跳转的连接(本例中此属性用不到,因为登录成功后的处理逻辑在LoginController里硬编码为main.jsp了) -->  
+        <!-- <property name="successUrl" value="/system/main"/> -->  
+        <!-- 用户访问未对其授权的资源时,所显示的连接 -->  
+        <!-- 若想更明显的测试此属性可以修改它的值,如unauthor.jsp,然后用[玄玉]登录后访问/admin/listUser.jsp就看见浏览器会显示unauthor.jsp -->  
+        <property name="unauthorizedUrl" value="/"/>  
+        <!-- Shiro连接约束配置,即过滤链的定义 -->  
+        <!-- 此处可配合这篇文章来理解各个过滤连的作用http://blog.csdn.net/jadyer/article/details/12172839 -->  
+        <!-- 下面value值的第一个'/'代表的路径是相对于HttpServletRequest.getContextPath()的值来的 -->  
+        <!-- anon：它对应的过滤器里面是空的,什么都没做,这里.do和.jsp后面的*表示参数,比方说login.jsp?main这种 -->  
+        <!-- authc：该过滤器下的页面必须验证后才能访问,它是Shiro内置的一个拦截器org.apache.shiro.web.filter.authc.FormAuthenticationFilter -->  
+        <property name="filterChainDefinitions">  
+            <value>  
+                /mydemo/login=anon  
+                /mydemo/getVerifyCodeImage=anon  
+                /main**=authc  
+                /user/info**=authc  
+                /admin/listUser**=authc,perms[admin:manage]  
+            </value>  
+        </property>  
+    </bean>  
+  
+    <!-- 保证实现了Shiro内部lifecycle函数的bean执行 -->  
+    <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor"/>  
+  
+    <!-- 开启Shiro的注解(如@RequiresRoles,@RequiresPermissions),需借助SpringAOP扫描使用Shiro注解的类,并在必要时进行安全逻辑验证 -->  
+    <!-- 配置以下两个bean即可实现此功能 -->  
+    <!-- Enable Shiro Annotations for Spring-configured beans. Only run after the lifecycleBeanProcessor has run -->  
+    <!-- 由于本例中并未使用Shiro注解,故注释掉这两个bean(个人觉得将权限通过注解的方式硬编码在程序中,查看起来不是很方便,没必要使用) -->  
+    <!--   
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" depends-on="lifecycleBeanPostProcessor"/>  
+    <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">  
+        <property name="securityManager" ref="securityManager"/>  
+    </bean>  
+     -->  
+</beans>  
+
+4、MyRealm.java------自定义的Realm类
+
+
+package com.papio.realm;  
+  
+import org.apache.commons.lang3.builder.ReflectionToStringBuilder;  
+import org.apache.commons.lang3.builder.ToStringStyle;  
+import org.apache.shiro.SecurityUtils;  
+import org.apache.shiro.authc.AuthenticationException;  
+import org.apache.shiro.authc.AuthenticationInfo;  
+import org.apache.shiro.authc.AuthenticationToken;  
+import org.apache.shiro.authc.SimpleAuthenticationInfo;  
+import org.apache.shiro.authc.UsernamePasswordToken;  
+import org.apache.shiro.authz.AuthorizationInfo;  
+import org.apache.shiro.authz.SimpleAuthorizationInfo;  
+import org.apache.shiro.realm.AuthorizingRealm;  
+import org.apache.shiro.session.Session;  
+import org.apache.shiro.subject.PrincipalCollection;  
+import org.apache.shiro.subject.Subject;  
+  
+/** 
+ * 自定义的指定Shiro验证用户登录的类 
+ * @see 在本例中定义了2个用户:papio和big,papio具有admin角色和admin:manage权限,big不具有任何角色和权限 
+ * @create
+ * @author
+ */  
+public class MyRealm extends AuthorizingRealm {  
+    /** 
+     * 为当前登录的Subject授予角色和权限 
+     * @see 经测试:本例中该方法的调用时机为需授权资源被访问时 
+     * @see 经测试:并且每次访问需授权资源时都会执行该方法中的逻辑,这表明本例中默认并未启用AuthorizationCache 
+     * @see 个人感觉若使用了Spring3.1开始提供的ConcurrentMapCache支持,则可灵活决定是否启用AuthorizationCache 
+     * @see 比如说这里从数据库获取权限信息时,先去访问Spring3.1提供的缓存,而不使用Shior提供的AuthorizationCache 
+     */  
+    @Override  
+    protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals){  
+        //获取当前登录的用户名,等价于(String)principals.fromRealm(this.getName()).iterator().next()  
+        String currentUsername = (String)super.getAvailablePrincipal(principals);  
+//      List<String> roleList = new ArrayList<String>();  
+//      List<String> permissionList = new ArrayList<String>();  
+//      //从数据库中获取当前登录用户的详细信息  
+//      User user = userService.getByUsername(currentUsername);  
+//      if(null != user){  
+//          //实体类User中包含有用户角色的实体类信息  
+//          if(null!=user.getRoles() && user.getRoles().size()>0){  
+//              //获取当前登录用户的角色  
+//              for(Role role : user.getRoles()){  
+//                  roleList.add(role.getName());  
+//                  //实体类Role中包含有角色权限的实体类信息  
+//                  if(null!=role.getPermissions() && role.getPermissions().size()>0){  
+//                      //获取权限  
+//                      for(Permission pmss : role.getPermissions()){  
+//                          if(!StringUtils.isEmpty(pmss.getPermission())){  
+//                              permissionList.add(pmss.getPermission());  
+//                          }  
+//                      }  
+//                  }  
+//              }  
+//          }  
+//      }else{  
+//          throw new AuthorizationException();  
+//      }  
+//      //为当前用户设置角色和权限  
+//      SimpleAuthorizationInfo simpleAuthorInfo = new SimpleAuthorizationInfo();  
+//      simpleAuthorInfo.addRoles(roleList);  
+//      simpleAuthorInfo.addStringPermissions(permissionList);  
+        SimpleAuthorizationInfo simpleAuthorInfo = new SimpleAuthorizationInfo();  
+        //实际中可能会像上面注释的那样从数据库取得  
+        if(null!=currentUsername && "papio".equals(currentUsername)){  
+            //添加一个角色,不是配置意义上的添加,而是证明该用户拥有admin角色    
+            simpleAuthorInfo.addRole("admin");  
+            //添加权限  
+            simpleAuthorInfo.addStringPermission("admin:manage");  
+            System.out.println("已为用户[papio]赋予了[admin]角色和[admin:manage]权限");  
+            return simpleAuthorInfo;  
+        }else if(null!=currentUsername && "big".equals(currentUsername)){  
+            System.out.println("当前用户[big]无授权");  
+            return simpleAuthorInfo;  
+        }  
+        //若该方法什么都不做直接返回null的话,就会导致任何用户访问/admin/listUser.jsp时都会自动跳转到unauthorizedUrl指定的地址  
+        //详见applicationContext.xml中的<bean id="shiroFilter">的配置  
+        return null;  
+    }  
+  
+      
+    /** 
+     * 验证当前登录的Subject 
+     * @see 经测试:本例中该方法的调用时机为LoginController.login()方法中执行Subject.login()时 
+     */  
+    @Override  
+    protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken authcToken) throws AuthenticationException {  
+        //获取基于用户名和密码的令牌  
+        //实际上这个authcToken是从LoginController里面currentUser.login(token)传过来的  
+        //两个token的引用都是一样的,本例中是org.apache.shiro.authc.UsernamePasswordToken@33799a1e  
+        UsernamePasswordToken token = (UsernamePasswordToken)authcToken;  
+        System.out.println("验证当前Subject时获取到token为" + ReflectionToStringBuilder.toString(token, ToStringStyle.MULTI_LINE_STYLE));  
+//      User user = userService.getByUsername(token.getUsername());  
+//      if(null != user){  
+//          AuthenticationInfo authcInfo = new SimpleAuthenticationInfo(user.getUsername(), user.getPassword(), user.getNickname());  
+//          this.setSession("currentUser", user);  
+//          return authcInfo;  
+//      }else{  
+//          return null;  
+//      }  
+        //此处无需比对,比对的逻辑Shiro会做,我们只需返回一个和令牌相关的正确的验证信息  
+        //说白了就是第一个参数填登录用户名,第二个参数填合法的登录密码(可以是从数据库中取到的,本例中为了演示就硬编码了)  
+        //这样一来,在随后的登录页面上就只有这里指定的用户和密码才能通过验证  
+        if("papio".equals(token.getUsername())){  
+            AuthenticationInfo authcInfo = new SimpleAuthenticationInfo("papio", "papio", this.getName());  
+            this.setSession("currentUser", "papio");  
+            return authcInfo;  
+        }else if("big".equals(token.getUsername())){  
+            AuthenticationInfo authcInfo = new SimpleAuthenticationInfo("big", "big", this.getName());  
+            this.setSession("currentUser", "big");  
+            return authcInfo;  
+        }  
+        //没有返回登录用户名对应的SimpleAuthenticationInfo对象时,就会在LoginController中抛出UnknownAccountException异常  
+        return null;  
+    }  
+      
+      
+    /** 
+     * 将一些数据放到ShiroSession中,以便于其它地方使用 
+     * @see 比如Controller,使用时直接用HttpSession.getAttribute(key)就可以取到 
+     */  
+    private void setSession(Object key, Object value){  
+        Subject currentUser = SecurityUtils.getSubject();  
+        if(null != currentUser){  
+            Session session = currentUser.getSession();  
+            System.out.println("Session默认超时时间为[" + session.getTimeout() + "]毫秒");  
+            if(null != session){  
+                session.setAttribute(key, value);  
+            }  
+        }  
+    }  
+}
+
+5、LoginController.java------处理用户登录
+
+
+package com.papio.controller;  
+  
+import java.awt.Color;  
+import java.awt.image.BufferedImage;  
+import java.io.IOException;  
+  
+import javax.imageio.ImageIO;  
+import javax.servlet.http.HttpServletRequest;  
+import javax.servlet.http.HttpServletResponse;  
+  
+import org.apache.commons.lang3.StringUtils;  
+import org.apache.commons.lang3.builder.ReflectionToStringBuilder;  
+import org.apache.commons.lang3.builder.ToStringStyle;  
+import org.apache.shiro.SecurityUtils;  
+import org.apache.shiro.authc.AuthenticationException;  
+import org.apache.shiro.authc.ExcessiveAttemptsException;  
+import org.apache.shiro.authc.IncorrectCredentialsException;  
+import org.apache.shiro.authc.LockedAccountException;  
+import org.apache.shiro.authc.UnknownAccountException;  
+import org.apache.shiro.authc.UsernamePasswordToken;  
+import org.apache.shiro.subject.Subject;  
+import org.apache.shiro.web.util.WebUtils;  
+import org.springframework.stereotype.Controller;  
+import org.springframework.web.bind.annotation.RequestMapping;  
+import org.springframework.web.bind.annotation.RequestMethod;  
+import org.springframework.web.servlet.view.InternalResourceViewResolver;  
+
+  
+/** 
+ * 本例中用到的jar文件如下 
+ * @see aopalliance.jar 
+ * @see commons-lang3-3.1.jar 
+ * @see commons-logging-1.1.2.jar 
+ * @see log4j-1.2.17.jar 
+ * @see shiro-all-1.2.2.jar 
+ * @see slf4j-api-1.7.5.jar 
+ * @see slf4j-log4j12-1.7.5.jar 
+ * @see spring-aop-3.2.4.RELEASE.jar 
+ * @see spring-beans-3.2.4.RELEASE.jar 
+ * @see spring-context-3.2.4.RELEASE.jar 
+ * @see spring-core-3.2.4.RELEASE.jar 
+ * @see spring-expression-3.2.4.RELEASE.jar 
+ * @see spring-jdbc-3.2.4.RELEASE.jar 
+ * @see spring-oxm-3.2.4.RELEASE.jar 
+ * @see spring-tx-3.2.4.RELEASE.jar 
+ * @see spring-web-3.2.4.RELEASE.jar 
+ * @see spring-webmvc-3.2.4.RELEASE.jar 
+ * @create Sep 30, 2013 11:10:06 PM 
+ */  
+@Controller  
+@RequestMapping("mydemo")  
+public class LoginController {  
+
+      
+    /** 
+     * 用户登录 
+     */  
+    @RequestMapping(value="/login", method=RequestMethod.POST)  
+    public String login(HttpServletRequest request){  
+        String resultPageURL = InternalResourceViewResolver.FORWARD_URL_PREFIX + "/";  
+        String username = request.getParameter("username");  
+        String password = request.getParameter("password");  
+
+        UsernamePasswordToken token = new UsernamePasswordToken(username, password);  
+        token.setRememberMe(true);  
+        System.out.println("为了验证登录用户而封装的token为" + ReflectionToStringBuilder.toString(token, ToStringStyle.MULTI_LINE_STYLE));  
+        //获取当前的Subject  
+        Subject currentUser = SecurityUtils.getSubject();  
+        try {  
+            //在调用了login方法后,SecurityManager会收到AuthenticationToken,并将其发送给已配置的Realm执行必须的认证检查  
+            //每个Realm都能在必要时对提交的AuthenticationTokens作出反应  
+            //所以这一步在调用login(token)方法时,它会走到MyRealm.doGetAuthenticationInfo()方法中,具体验证方式详见此方法  
+            System.out.println("对用户[" + username + "]进行登录验证..验证开始");  
+            currentUser.login(token);  
+            System.out.println("对用户[" + username + "]进行登录验证..验证通过");  
+            resultPageURL = "main";  
+        }catch(UnknownAccountException uae){  
+            System.out.println("对用户[" + username + "]进行登录验证..验证未通过,未知账户");  
+            request.setAttribute("message_login", "未知账户");  
+        }catch(IncorrectCredentialsException ice){  
+            System.out.println("对用户[" + username + "]进行登录验证..验证未通过,错误的凭证");  
+            request.setAttribute("message_login", "密码不正确");  
+        }catch(LockedAccountException lae){  
+            System.out.println("对用户[" + username + "]进行登录验证..验证未通过,账户已锁定");  
+            request.setAttribute("message_login", "账户已锁定");  
+        }catch(ExcessiveAttemptsException eae){  
+            System.out.println("对用户[" + username + "]进行登录验证..验证未通过,错误次数过多");  
+            request.setAttribute("message_login", "用户名或密码错误次数过多");  
+        }catch(AuthenticationException ae){  
+            //通过处理Shiro的运行时AuthenticationException就可以控制用户登录失败或密码错误时的情景  
+            System.out.println("对用户[" + username + "]进行登录验证..验证未通过,堆栈轨迹如下");  
+            ae.printStackTrace();  
+            request.setAttribute("message_login", "用户名或密码不正确");  
+        }  
+        //验证是否登录成功  
+        if(currentUser.isAuthenticated()){  
+            System.out.println("用户[" + username + "]登录认证通过(这里可以进行一些认证通过后的一些系统参数初始化操作)");  
+        }else{  
+            token.clear();  
+        }  
+        return resultPageURL;  
+    }  
+      
+      
+    /** 
+     * 用户登出 
+     */  
+    @RequestMapping("/logout")  
+    public String logout(HttpServletRequest request){  
+         SecurityUtils.getSubject().logout();  
+         return InternalResourceViewResolver.REDIRECT_URL_PREFIX + "/";  
+    }  
+}
+
+6、UserController.java------处理普通用户访问
+
+
+package com.papio.controller;  
+  
+import javax.servlet.http.HttpServletRequest;  
+  
+import org.springframework.stereotype.Controller;  
+import org.springframework.web.bind.annotation.RequestMapping;  
+  
+@Controller  
+@RequestMapping("mydemo")  
+public class UserController {  
+    @RequestMapping(value="/getUserInfo")  
+    public String getUserInfo(HttpServletRequest request){  
+        String currentUser = (String)request.getSession().getAttribute("currentUser");  
+        System.out.println("当前登录的用户为[" + currentUser + "]");  
+        request.setAttribute("currUser", currentUser);  
+        return "/user/info";  
+    }  
+}  
+
+
